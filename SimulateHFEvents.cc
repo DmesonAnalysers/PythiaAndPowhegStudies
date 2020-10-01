@@ -282,6 +282,7 @@ void SimulateHFEvents(TString cfgFileName)
                 (flavour == "beauty" && (absPdg == 5 || absPdg / 100 == 5 || absPdg / 1000 == 5)) ||
                 (flavour == "charmbeauty" && (absPdg == 4 || absPdg / 100 == 4 || absPdg / 1000 == 4 || absPdg == 5 || absPdg / 100 == 5 || absPdg / 1000 == 5)))
             {               
+                // TODO: add origin (prompt / feed-down)
                 evNum = iEvent;
                 label = iPart;
                 mother = part->GetFirstMother();
