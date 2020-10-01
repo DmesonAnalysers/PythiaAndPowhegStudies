@@ -223,13 +223,12 @@ void SimulateHFEvents(TString cfgFileName)
     TFile outFile(outFileName.data(), "recreate");
     TTree *treeEvents = new TTree("treeEvents", "treeEvents");
     double pT = -1., y = -1., eta = -1.;
-    int evNum = -1, pdg = -1, label = -1, mother = -1;
+    int evNum = -1, pdg = -1, origin = -1;
     treeEvents->Branch("pT", &pT);
     treeEvents->Branch("y", &y);
     treeEvents->Branch("eta", &eta);
     treeEvents->Branch("pdg", &pdg);
-    treeEvents->Branch("label", &label);
-    treeEvents->Branch("mother", &label);
+    treeEvents->Branch("origin", &origin);
     treeEvents->Branch("event_number", &evNum);
 
     TH1F *hNevents = new TH1F("hNevents", "hNevents", 1, -0.5, 1.5);
@@ -277,15 +276,36 @@ void SimulateHFEvents(TString cfgFileName)
             pdg = part->GetPdgCode();
             int absPdg = TMath::Abs(pdg);
 
-            // select charm (beauty) quark or charm (beauty) "stable" meson or baryon 
-            if ((flavour == "charm" && (absPdg == 4 || absPdg / 100 == 4 || absPdg / 1000 == 4)) || 
-                (flavour == "beauty" && (absPdg == 5 || absPdg / 100 == 5 || absPdg / 1000 == 5)) ||
-                (flavour == "charmbeauty" && (absPdg == 4 || absPdg / 100 == 4 || absPdg / 1000 == 4 || absPdg == 5 || absPdg / 100 == 5 || absPdg / 1000 == 5)))
-            {               
-                // TODO: add origin (prompt / feed-down)
+            // select charm (beauty) "stable" meson or baryon 
+            bool isCharm = false;
+            bool isBeauty = false;
+            if(absPdg / 100 == 4 || absPdg / 1000 == 4)
+                isCharm = true;
+            else if(absPdg / 100 == 5 || absPdg / 1000 == 5)
+                isBeauty = true;
+
+            origin = 4; // origin for charm (4: prompt, 5: feed-down)
+
+            if ((isCharm && (flavour == "charm" || flavour == "charmbeauty")) || (isBeauty && (flavour == "beauty" || flavour == "charmbeauty")))
+            {   
                 evNum = iEvent;
-                label = iPart;
-                mother = part->GetFirstMother();
+
+                // check origin (do not go up to quark)
+                if(isCharm)
+                {
+                    int motherIdx = part->GetFirstMother();
+                    while(motherIdx>=0) {
+                        TParticle* motherPart = dynamic_cast<TParticle*>(particles->At(motherIdx));
+                        motherIdx = motherPart->GetFirstMother();
+                        int absPdgMom = TMath::Abs(motherPart->GetPdgCode());
+                        if(absPdgMom == 5 || absPdgMom / 100 == 5 || absPdgMom / 1000 == 5 || (absPdgMom-10000) / 100 == 5 || (absPdgMom-20000) / 100 == 5 || (absPdgMom-100000) / 100 == 5 || (absPdgMom-200000) / 100 == 5)
+                        {
+                            origin = 5;
+                            break;
+                        }
+                    }
+                }
+
                 treeEvents->Fill();
             }
         }
