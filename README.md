@@ -19,7 +19,7 @@ Repository with scripts to perform studies with Pythia8
   Configuration for 64bit systems:
   
   ```bash
-  ./configure --enable-64bit
+  ./configure --enable-64bit --enable-shared
   ```
   
   All configuration options can be listed with
