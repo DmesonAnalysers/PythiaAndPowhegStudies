@@ -42,6 +42,12 @@ Repository with scripts to perform studies with Pythia8
   make -J N
   ```
   
+  Copy the shared library:
+  ```bash
+  cd lib
+  cp libpythia8.dylib libpythia8.so
+  ```
+  
   Setup the environment including in the ```.bashrc``` (```.bash_profile```)
   
   ```bash
