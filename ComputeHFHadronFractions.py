@@ -27,11 +27,11 @@ TGaxis.SetMaxDigits(3)
 
 labels = {'D0': 'D^{0}', 'Dplus': 'D^{+}', 'Dstar': 'D^{*+}', 'Ds': 'D_{s}^{+}', 'Lc': '#Lambda_{c}^{+}',
           'Sigmac0': '#Sigma_{c}^{0}', 'Sigmacplus': '#Sigma_{c}^{+}', 'Sigmacplusplus': '#Sigma_{c}^{++}',
-          'Xic0': '#Xi_{c}^{0}', 'Xicplus': '#Xi_{c}^{+}', 'Omegac': '#Omega_{c}^{0}'}
+          'Xic0': '#Xi_{c}^{0}', 'Xicplus': '#Xi_{c}^{+}', 'Omegac': '#Omega_{c}^{0}', 'Jpsi': 'J/#psi'}
 
 pdgCodes = {'D0': 421, 'Dplus': 411, 'Dstar': 413, 'Ds': 431,
             'Lc': 4122, 'Sigmac0': 4112, 'Sigmacplus': 4212, 'Sigmacplusplus': 4222,
-            'Xic0': 4132, 'Xicplus': 4232, 'Omegac': 4332}
+            'Xic0': 4132, 'Xicplus': 4232, 'Omegac': 4332, 'Jpsi': 443}
 
 hRatioToD0 = TH1F('hRatioToD0', ';;Ratio to D^{0}', len(labels)-1, 0.5, len(labels)-0.5)
 hRatioToD0.SetLineColor(kBlack)
@@ -41,7 +41,6 @@ hRatioToD0.SetMarkerStyle(kFullCircle)
 
 kineTree = uproot.open(args.inFileName)['treeEvents']
 kineDf, counts, unc, ratio, uncRatio = ({} for _ in range(5))
-# TODO: add selection of prompt only!
 kineDf['all'] = kineTree.pandas.df().query('origin == 4 and abs(y) < 0.5') # select only prompt and midrapidity
 for iSpecie, specie in enumerate(pdgCodes):
     kineDf[specie] = kineDf['all'].query(f'abs(pdg) == {pdgCodes[specie]}')
