@@ -13,10 +13,9 @@ tunes:
     paperSkandsMode: 2
     advanced: # custom non-standard configurations (enabled only if paperSkandsMode == -1)
         CRmode: -1
-        qq1toQQ0charm: 0
-        qq1toQQ0beauty: 0
-        timeDilationMode: 0
-        doSigmaLoop: 0
+        qq1toQQ0charm: -1
+        qq1toQQ0beauty: -1
+        timeDilationMode: -1
         doubleJunct: 1
         m0: -1
 

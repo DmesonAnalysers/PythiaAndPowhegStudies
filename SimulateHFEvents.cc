@@ -48,7 +48,6 @@ void SimulateHFEvents(TString cfgFileName)
     int qq1toQQ0charm = config["tunes"]["advanced"]["qq1toQQ0charm"].as<int>();
     int qq1toQQ0beauty = config["tunes"]["advanced"]["qq1toQQ0beauty"].as<int>();
     int timeDilationMode = config["tunes"]["advanced"]["timeDilationMode"].as<int>();
-    int doSigmaLoop = config["tunes"]["advanced"]["doSigmaLoop"].as<int>();
     int doubleJunct = config["tunes"]["advanced"]["doubleJunct"].as<int>();
     int m0 = config["tunes"]["advanced"]["m0"].as<int>();
 
