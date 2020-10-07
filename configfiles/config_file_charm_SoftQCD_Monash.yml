@@ -2,6 +2,7 @@ flavour: charm # charm, beauty, charmbeauty
 nevents: 10000000
 seed: 0
 collenergy: 5020 # GeV
+storequarks: 0 # 1=true, 0=false
 
 selections:
     rapidity: [-10., 10.]

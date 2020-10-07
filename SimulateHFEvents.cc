@@ -36,6 +36,7 @@ void SimulateHFEvents(TString cfgFileName)
     int nevents = config["nevents"].as<int>();
     double collenergy = config["collenergy"].as<double>();
     int seed = config["seed"].as<int>();
+    bool storeQuarks = static_cast<bool>(config["storequarks"].as<int>());
 
     std::array<double, 2> ptLims = config["selections"]["pt"].as<std::array<double, 2> >();
     std::array<double, 2> yLims = config["selections"]["rapidity"].as<std::array<double, 2> >();
@@ -222,12 +223,14 @@ void SimulateHFEvents(TString cfgFileName)
     TFile outFile(outFileName.data(), "recreate");
     TTree *treeEvents = new TTree("treeEvents", "treeEvents");
     double pT = -1., y = -1., eta = -1.;
-    int evNum = -1, pdg = -1, origin = -1;
+    int evNum = -1, pdg = -1, origin = -1, index = -1, indexMother = -1;
     treeEvents->Branch("pT", &pT);
     treeEvents->Branch("y", &y);
     treeEvents->Branch("eta", &eta);
     treeEvents->Branch("pdg", &pdg);
     treeEvents->Branch("origin", &origin);
+    treeEvents->Branch("index", &index);
+    treeEvents->Branch("indexMother", &indexMother);
     treeEvents->Branch("event_number", &evNum);
 
     TH1F *hNevents = new TH1F("hNevents", "hNevents", 1, -0.5, 1.5);
@@ -278,9 +281,9 @@ void SimulateHFEvents(TString cfgFileName)
             // select charm (beauty) "stable" meson or baryon 
             bool isCharm = false;
             bool isBeauty = false;
-            if(absPdg / 100 == 4 || absPdg / 1000 == 4)
+            if((storeQuarks && absPdg == 4) || absPdg / 100 == 4 || absPdg / 1000 == 4)
                 isCharm = true;
-            else if(absPdg / 100 == 5 || absPdg / 1000 == 5)
+            else if((storeQuarks && absPdg == 5) || absPdg / 100 == 5 || absPdg / 1000 == 5)
                 isBeauty = true;
 
             origin = 4; // origin for charm (4: prompt, 5: feed-down)
@@ -288,9 +291,11 @@ void SimulateHFEvents(TString cfgFileName)
             if ((isCharm && (flavour == "charm" || flavour == "charmbeauty")) || (isBeauty && (flavour == "beauty" || flavour == "charmbeauty")))
             {   
                 evNum = iEvent;
+                index = iPart;
+                indexMother = part->GetFirstMother();
 
                 // check origin (do not go up to quark)
-                if(isCharm)
+                if(isCharm && absPdg != 4)
                 {
                     int motherIdx = part->GetFirstMother();
                     while(motherIdx>=0) {
