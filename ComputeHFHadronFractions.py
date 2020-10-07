@@ -41,9 +41,12 @@ hRatioToD0.SetMarkerStyle(kFullCircle)
 
 kineTree = uproot.open(args.inFileName)['treeEvents']
 kineDf, counts, unc, ratio, uncRatio = ({} for _ in range(5))
-kineDf['all'] = kineTree.pandas.df().query('origin == 4 and abs(y) < 0.5') # select only prompt and midrapidity
+kineDf['all'] = kineTree.pandas.df().query('abs(y) < 0.5') # select only prompt and midrapidity
 for iSpecie, specie in enumerate(pdgCodes):
-    kineDf[specie] = kineDf['all'].query(f'abs(pdg) == {pdgCodes[specie]}')
+    if 'Jpsi' not in specie:
+        kineDf[specie] = kineDf['all'].query(f'origin == 4 and abs(pdg) == {pdgCodes[specie]}')
+    else:
+        kineDf[specie] = kineDf['all'].query(f'abs(pdg) == {pdgCodes[specie]}')
     counts[specie] = len(kineDf[specie])
     unc[specie] = np.sqrt(counts[specie])
     if 'D0' not in specie:

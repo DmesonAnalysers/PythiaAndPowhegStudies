@@ -1,8 +1,8 @@
-flavour: charm # charm, beauty, charmbeauty
+flavour: beauty # charm, beauty, charmbeauty
 nevents: 10000000
 seed: 0
 collenergy: 5020 # GeV
-storequarks: 0 # 1=true, 0=false
+storequarks: 1 # 1=true, 0=false
 
 selections:
     rapidity: [-10., 10.]
@@ -10,7 +10,7 @@ selections:
 
 tunes:
     tune: 14 # 4=2M, 5=4C, 6=4Cx, 14=Monash
-    process: SoftQCD # alternatives: HardQCDCharm, HardQCDBeauty, HardQCDCharmBeauty
+    process: HardQCDBeauty # alternatives: HardQCDCharm, HardQCDBeauty, HardQCDCharmBeauty
     paperSkandsMode: -1
     advanced: # custom non-standard configurations (enabled only if paperSkandsMode == -1)
         CRmode: -1
@@ -21,4 +21,4 @@ tunes:
         m0: -1
 
 output:
-    filename: CharmHadrons_pp5dot02TeV_Pythia8_SoftQCD_Monash.root
+    filename: BeautyHadrons_pp5dot02TeV_Pythia8_HardQCD_Monash.root
