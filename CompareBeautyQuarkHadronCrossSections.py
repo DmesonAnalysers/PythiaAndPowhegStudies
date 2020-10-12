@@ -1,7 +1,13 @@
+'''
+Python script for the evaluation of the difference between the rapidity distribution
+of the beauty quark and the corresponding beauty hadron
+'''
+
+import argparse
 import numpy as np
 import uproot
 from root_numpy import fill_hist
-from ROOT import TH2F, TCanvas, TLegend, TGaxis, gStyle, kRainBow, kRed, kAzure # pylint: disable=import-error,no-name-in-module
+from ROOT import TH2F, TH1F, TFile, TCanvas, TLegend, TGaxis, gStyle, kRainBow, kRed, kAzure, kBlack, kFullCircle # pylint: disable=import-error,no-name-in-module
 
 gStyle.SetOptStat(0)
 gStyle.SetPadLeftMargin(0.12)
@@ -16,7 +22,13 @@ gStyle.SetPadTickX(1)
 gStyle.SetPadTickY(1)
 TGaxis.SetMaxDigits(3)
 
-kineTree = uproot.open('Bevents.root')['treeEvents']
+parser = argparse.ArgumentParser(description='Arguments')
+parser.add_argument('inFileName', help='input root file name')
+parser.add_argument('--yMin', type=float, default=-0.5, help='minimum rapidity')
+parser.add_argument('--yMax', type=float, default=0.5, help='maximum rapidity')
+args = parser.parse_args()
+
+kineTree = uproot.open(args.inFileName)['treeEvents']
 kineDf = kineTree.pandas.df()
 dfQuarks = kineDf.query('pdg == 5')
 dfAntiQuarks = kineDf.query('pdg == -5')
@@ -34,12 +46,13 @@ hRapidityQuarkVsHadron.Add(hRapidityAntiQuarkVsHadron)
 hRapidityQuark = hRapidityQuarkVsHadron.ProjectionX()
 hRapidityQuark.SetLineColor(kAzure+4)
 hRapidityQuark.SetLineWidth(2)
+hRapidityQuark.GetXaxis().SetTitle('#it{y}')
+hRapidityQuark.GetYaxis().SetTitle('d#sigma/d#it{y} (a.u)')
 hRapidityHadron = hRapidityQuarkVsHadron.ProjectionY()
 hRapidityHadron.SetLineColor(kRed+1)
 hRapidityHadron.SetLineWidth(2)
-
-yBinMin = hRapidityHadron.GetXaxis().FindBin(-0.5)
-yBinMax = hRapidityHadron.GetXaxis().FindBin(0.5)
+hRapidityHadron.GetXaxis().SetTitle('#it{y}')
+hRapidityHadron.GetYaxis().SetTitle('d#sigma/d#it{y} (a.u)')
 
 cCorr = TCanvas('cCorr', '', 500, 500)
 cCorr.SetLogz()
@@ -53,14 +66,38 @@ leg.AddEntry(hRapidityQuark, 'b-quark', 'l')
 leg.AddEntry(hRapidityHadron, 'b-hadron', 'l')
 
 cY = TCanvas('cY', '', 500, 500)
-hRapidityQuark.GetXaxis().SetTitle('#it{y}')
-hRapidityQuark.GetYaxis().SetTitle('d#sigma/d#it{y} (a.u)')
 hRapidityQuark.Draw()
 hRapidityHadron.Draw('same')
 leg.Draw()
-print(hRapidityHadron.Integral(yBinMin, yBinMax)/hRapidityQuark.Integral(yBinMin, yBinMax))
 
-cCorr.SaveAs('Beauty_Quark_vs_Hadron_rapidity.pdf')
-cY.SaveAs('Beauty_Quark_Hadron_rapidity_distribution.pdf')
+yBinMin = hRapidityHadron.GetXaxis().FindBin(args.yMin)
+yBinMax = hRapidityHadron.GetXaxis().FindBin(args.yMax)
+integralQuark = hRapidityQuark.Integral(yBinMin, yBinMax)
+integralHadron = hRapidityHadron.Integral(yBinMin, yBinMax)
+integralQuarkUnc = np.sqrt(integralQuark)
+integralHadronUnc = np.sqrt(integralHadron)
+ratio = integralQuark / integralHadron
+ratioUnc = np.sqrt((integralQuarkUnc/integralQuark)**2 + (integralHadronUnc/integralHadron)**2) * ratio
+
+hCorrFactor = TH1F('hCorrFactorRapidityPythia',
+                   ';;d#sigma_{b}/d#it{y}_{b}|_{|#it{y}_{b}| < 0.5} '
+                   '/ d#sigma_{H_{b}}/d#it{y}_{H_{b}}|_{|#it{y}_{H_{b}}| < 0.5}', 1, 0.5, 1.5)
+hCorrFactor.SetBinContent(1, ratio)
+hCorrFactor.SetBinError(1, ratioUnc)
+hCorrFactor.SetLineColor(kBlack)
+hCorrFactor.SetMarkerColor(kBlack)
+hCorrFactor.SetMarkerStyle(kFullCircle)
+hCorrFactor.SetLineWidth(2)
+hCorrFactor.GetYaxis().SetRangeUser(0, 1.15)
+hCorrFactor.GetYaxis().SetDecimals()
+
+outFile = TFile(args.inFileName.replace('.root', '_corrFactor_rapidity.root'), 'recreate')
+cCorr.Write()
+cY.Write()
+hRapidityQuark.Write()
+hRapidityHadron.Write()
+hRapidityQuarkVsHadron.Write()
+hCorrFactor.Write()
+outFile.Close()
 
 input('Press enter to exit')
