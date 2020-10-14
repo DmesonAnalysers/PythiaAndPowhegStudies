@@ -2,8 +2,8 @@
 ![](https://img.shields.io/github/languages/count/DmesonAnalysers/DmesonAnalysis?color=green)
 ![](https://img.shields.io/github/last-commit/DmesonAnalysers/DmesonAnalysis?color=red)
 
-# PythiaStudies
-Repository with scripts to perform studies with Pythia8
+# PythiaAndPowhegStudies
+Repository with scripts to perform studies with Pythia8 and Powheg
 
 # Instructions for Pythia8 installation as ROOT plugin
 - Download and installation of Pythia8
@@ -53,7 +53,7 @@ Repository with scripts to perform studies with Pythia8
   ```bash
   export PYTHIA8=$HOME/pythia8243
   export PYTHIA8DATA=$HOME/pythia8243/share/Pythia8/xmldoc
-  LD_LIBRARY_PATH=$PYTHIA8/lib
+  DYLD_LIBRARY_PATH=$PYTHIA8/lib:$DYLD_LIBRARY_PATH
   ```
   
 - Compilation of ROOT
@@ -81,4 +81,34 @@ Repository with scripts to perform studies with Pythia8
   ```bash
   root -l
   .x $ROOTSYS/tutorials/pythia/pithia8.C
+  ```
+
+# Instructions for POWHEG-BOX installation
+- Download and install LHAPDF
+
+  For the installation follow the instructions in [https://lhapdf.hepforge.org/install.html](https://lhapdf.hepforge.org/install.html)
+  
+  Setup the environment including in the ```.bashrc``` (```.bash_profile```)
+  
+  ```bash
+  export LHAPDF=/path/for/installation
+  export PATH=$PATH:$LHAPDF/bin
+  LD_LIBRARY_PATH=$LHAPDF/lib:$LD_LIBRARY_PATH
+  export LHAPDF_DATA_PATH=$LHAPDF/share/LHAPDF
+  ```
+  
+  Copy sets of pdfs in ```$LHAPDF_DATA_PATH``` from CERN CVMFS ```/cvmfs/sft.cern.ch/lcg/external/lhapdfsets/current/```
+  
+- Download and install POWHEG-BOX
+  
+  Download the package with
+  ```bash
+  svn checkout --username anonymous --password anonymoussvn://powhegbox.mib.infn.it/trunk/POWHEG-BOX  
+  ```
+  
+  Install the desired process (heavy quarks ```hvq``` in this case)
+  ```bash
+  cd POHEG-BOX/hvq
+  make pwhg_main
+  make main-PYTHIA-lhef
   ```
