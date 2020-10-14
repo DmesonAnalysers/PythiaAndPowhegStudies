@@ -1,9 +1,15 @@
 __pycache__
+*/__pycache__
 *.pyc
 .vscode
 *.pcm
 *.d
 *.so
 .DS_Store
-*.root
-*.txt
+*/*.root
+*/*.txt
+*/*.lhe
+*/*.pdf
+*/*/*.lhe
+*/*/*.root
+*/*/*.pdf
