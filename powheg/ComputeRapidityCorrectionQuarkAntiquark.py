@@ -27,8 +27,10 @@ parser = argparse.ArgumentParser(description='Arguments')
 parser.add_argument('inFileName', help='input lhe file name')
 parser.add_argument('--yMin', type=float, default=-0.5, help='minimum rapidity')
 parser.add_argument('--yMax', type=float, default=0.5, help='maximum rapidity')
-parser.add_argument('--charm', action='store_true', default=False, help='activate calculation for charm quarks')
-parser.add_argument('--beauty', action='store_true', default=False, help='activate calculation for beauty quarks')
+parser.add_argument('--charm', action='store_true', default=False,
+                    help='activate calculation for charm quarks')
+parser.add_argument('--beauty', action='store_true', default=False,
+                    help='activate calculation for beauty quarks')
 args = parser.parse_args()
 
 if args.charm and args.beauty:
