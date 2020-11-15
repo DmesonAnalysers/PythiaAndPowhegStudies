@@ -124,6 +124,7 @@ void ComputeDplusFromDstarCrossSec(int nGen, int decayer)
         gSystem->Load("libTEvtGen.so");
         pdec = new AliDecayerEvtGen();
     }
+    pdec->Init();
 
     TClonesArray array = TClonesArray("TParticle", 100);
     TLorentzVector vec = TLorentzVector();
@@ -184,7 +185,7 @@ void ComputeDplusFromDstarCrossSec(int nGen, int decayer)
 
     TCanvas *cResult = new TCanvas("cResult", "", 1000, 500);
     cResult->Divide(2, 1);
-    cResult->cd(1)->DrawFrame(0., hDstar->GetMinimum() * 0.05, 36., hDstar->GetMaximum() * 5, ";#it{p}_{T} (GeV/#it{c}); d#sigma/(d#it{p}_{T}d#it{y}) (#mub GeV^{-1} #it{c})");
+    cResult->cd(1)->DrawFrame(0., hDstar->GetMinimum() * 0.05, 36., hDstar->GetMaximum() * 5, ";#it{p}_{T} (GeV/#it{c}); d#sigma/(d#it{p}_{T}d#it{y}) (pb GeV^{-1} #it{c})");
     cResult->cd(1)->SetLogy();
     hDstar->Draw("same");
     fPowLawDstar->Draw("same");
