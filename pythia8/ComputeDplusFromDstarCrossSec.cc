@@ -36,12 +36,12 @@ enum dec
 
 //_______________________________________________________________________________________________
 // FUNCTION PROTOTYPES
-void ComputeDplusFromDstarCrossSec(int nGen = 10000000, int decayer = kPythia8);
+void ComputeDplusFromDstarCrossSec(int nGen = 100000, int decayer = kPythia8, bool rebinToCoarse=false);
 double PowLaw(double *pt, double *pars);
 
 //_______________________________________________________________________________________________
 // FUNCTION IMPLEMENTATIONS
-void ComputeDplusFromDstarCrossSec(int nGen, int decayer)
+void ComputeDplusFromDstarCrossSec(int nGen, int decayer, bool rebinToCoarse)
 {
     gStyle->SetOptStat(0);
     gStyle->SetPadRightMargin(0.12);
@@ -94,13 +94,7 @@ void ComputeDplusFromDstarCrossSec(int nGen, int decayer)
     TFile *inFileDplus = TFile::Open("crosssections/CrossSecDplusML_pp5TeV.root");
     TH1F *hDplus = static_cast<TH1F *>(inFileDplus->Get("histoSigmaCorr"));
     hDplus->Scale(1. / BRDplus);
-    hDplus->SetName("hDplus");
-    hDplus->SetStats(0);
-    hDplus->SetDirectory(0);
-    hDplus->SetLineWidth(2);
-    hDplus->SetLineColor(kGreen + 2);
-    hDplus->SetMarkerColor(kGreen + 2);
-    hDplus->SetMarkerStyle(kFullCircle);
+    hDplus->SetName("hDplusOrig");
     TGraphAsymmErrors* gDplus = static_cast<TGraphAsymmErrors *>(inFileDplus->Get("gSigmaCorr"));
     TGraphAsymmErrors* gDplusFD = static_cast<TGraphAsymmErrors *>(inFileDplus->Get("gSigmaCorrConservative"));
     for(int iPt=0; iPt<gDplus->GetN(); iPt++)
@@ -112,18 +106,73 @@ void ComputeDplusFromDstarCrossSec(int nGen, int decayer)
         double systUncHigh = TMath::Sqrt(gDplus->GetErrorYhigh(iPt)*gDplus->GetErrorYhigh(iPt) + gDplusFD->GetErrorYhigh(iPt)*gDplusFD->GetErrorYhigh(iPt));
         gDplus->SetPointError(iPt, gDplus->GetErrorXlow(iPt), gDplus->GetErrorXhigh(iPt), systUncLow / BRDplus, systUncHigh / BRDplus);
     }
-    gDplus->SetName("gDplus");
-    gDplus->SetLineWidth(2);
-    gDplus->SetLineColor(kGreen + 2);
-    gDplus->SetMarkerColor(kGreen + 2);
-    gDplus->SetFillColorAlpha(kGreen + 2, 0.2);
+    gDplus->SetName("gDplusOrig");
+
+    const int nPtBinsReb = 13;
+    double ptLimsReb[nPtBinsReb+1] = {0., 1., 2., 3., 4., 5., 6., 7., 8., 10., 12., 16., 24., 36.};
+    TH1F* hDplusReb = nullptr;
+    TGraphAsymmErrors* gDplusReb = nullptr;
+    if(rebinToCoarse)
+    {
+        for(int iPt=0; iPt<hDplus->GetNbinsX(); iPt++)
+        {
+            hDplus->SetBinContent(iPt+1, hDplus->GetBinContent(iPt+1) * hDplus->GetBinWidth(iPt+1));
+            hDplus->SetBinError(iPt+1, hDplus->GetBinError(iPt+1) * hDplus->GetBinWidth(iPt+1));
+        }
+        hDplusReb = static_cast<TH1F*>(hDplus->Rebin(nPtBinsReb, "hDplus", ptLimsReb));
+        hDplusReb->Scale(1., "width");
+        hDplus->Scale(1., "width");
+        gDplusReb = new TGraphAsymmErrors(0);
+        gDplusReb->SetName("gDplus");
+        for(int iPtReb=0; iPtReb<nPtBinsReb; iPtReb++)
+        {
+            double ptCentReb = hDplusReb->GetBinCenter(iPtReb+1);
+            double ptBinWidthReb = hDplusReb->GetBinWidth(iPtReb+1);
+            double crossSecReb = hDplusReb->GetBinContent(iPtReb+1);
+            double ptMinReb = hDplusReb->GetBinLowEdge(iPtReb+1);
+            double ptMaxReb = hDplusReb->GetXaxis()->GetBinUpEdge(iPtReb+1);
+ 
+            double systLow=0., systHigh=0.;
+            for(int iPt=0; iPt<hDplus->GetNbinsX(); iPt++)
+            {
+                double ptMinOrig = hDplus->GetBinLowEdge(iPt+1);
+                double ptMaxOrig = hDplus->GetXaxis()->GetBinUpEdge(iPt+1);
+                if(ptMinOrig >= ptMinReb && ptMaxOrig <= ptMaxReb)
+                {
+                    double ptBinWidthOrig = hDplus->GetBinWidth(iPt+1);
+                    systLow += gDplus->GetErrorYlow(iPt+1) * ptBinWidthOrig;
+                    systHigh += gDplus->GetErrorYhigh(iPt+1) * ptBinWidthOrig;
+                }
+            }
+            gDplusReb->SetPoint(iPtReb, ptCentReb, crossSecReb);
+            gDplusReb->SetPointError(iPtReb, 0.4, 0.4, systLow / ptBinWidthReb, systHigh / ptBinWidthReb);
+        }
+    }
+    else
+    {
+        hDplusReb = static_cast<TH1F*>(hDplus->Clone("hDplus"));
+        gDplusReb = static_cast<TGraphAsymmErrors*>(gDplus->Clone("gDplus"));
+    }
+
+    gDplusReb->SetLineWidth(2);
+    gDplusReb->SetLineColor(kGreen + 2);
+    gDplusReb->SetMarkerColor(kGreen + 2);
+    gDplusReb->SetFillColorAlpha(kGreen + 2, 0.2);
+    hDplusReb->SetStats(0);
+    hDplusReb->SetDirectory(0);
+    hDplusReb->SetLineWidth(2);
+    hDplusReb->SetLineColor(kGreen + 2);
+    hDplusReb->SetMarkerColor(kGreen + 2);
+    hDplusReb->SetMarkerStyle(kFullCircle);
     inFileDplus->Close();
-    TH1F* hDplusFromDstar = static_cast<TH1F *>(hDplus->Clone("hDplusFromDstar"));
+
+    TH1F* hDplusFromDstar = static_cast<TH1F *>(hDplusReb->Clone("hDplusFromDstar"));
     hDplusFromDstar->Reset();
     hDplusFromDstar->SetLineColor(kRed+1);
     hDplusFromDstar->SetMarkerColor(kRed+1);
-    TH1F* hDplusFromDstarSys[2] = {static_cast<TH1F *>(hDplus->Clone("hDplusFromDstarSysLow")), static_cast<TH1F *>(hDplus->Clone("hDplusFromDstarSysHigh"))};
-    TGraphAsymmErrors* gDplusFromDstar = static_cast<TGraphAsymmErrors *>(gDplus->Clone("gDplusFromDstar"));
+    TH1F* hDplusFromDstarSys[2] = {static_cast<TH1F *>(hDplusReb->Clone("hDplusFromDstarSysLow")),
+                                   static_cast<TH1F *>(hDplusReb->Clone("hDplusFromDstarSysHigh"))};
+    TGraphAsymmErrors* gDplusFromDstar = static_cast<TGraphAsymmErrors *>(gDplusReb->Clone("gDplusFromDstar"));
     gDplusFromDstar->SetName("gDplusFromDstar");
     gDplusFromDstar->SetLineColor(kRed + 1);
     gDplusFromDstar->SetMarkerColor(kRed + 1);
@@ -132,6 +181,7 @@ void ComputeDplusFromDstarCrossSec(int nGen, int decayer)
     TVirtualMCDecayer *pdec = nullptr;
     if (decayer == kPythia6)
     {
+        std::cout << "Using Pythia6 decayer" << std::endl;
         gSystem->Load("liblhapdf.so");
         gSystem->Load("libEGPythia6.so");
         gSystem->Load("libpythia6.so");
@@ -139,6 +189,7 @@ void ComputeDplusFromDstarCrossSec(int nGen, int decayer)
     }
     else if (decayer == kPythia8)
     {
+        std::cout << "Using Pythia8 decayer" << std::endl;
         gSystem->Load("liblhapdf.so");
         gSystem->Load("libpythia8.so");
         gSystem->Load("libAliPythia8.so");
@@ -149,6 +200,7 @@ void ComputeDplusFromDstarCrossSec(int nGen, int decayer)
     }
     else if (decayer == kEvtGen)
     {
+        std::cout << "Using EvtGen decayer" << std::endl;
         gSystem->Load("liblhapdf.so");
         gSystem->Load("libpythia8.so");
         gSystem->Load("libAliPythia8.so");
@@ -157,6 +209,11 @@ void ComputeDplusFromDstarCrossSec(int nGen, int decayer)
         gSystem->Load("libEvtGenExternal.so");
         gSystem->Load("libTEvtGen.so");
         pdec = new AliDecayerEvtGen();
+    }
+    else
+    {
+        std::cerr << "ERROR: decayer not defined! Exit" << std::endl;
+        return; 
     }
     pdec->Init();
 
@@ -333,13 +390,13 @@ void ComputeDplusFromDstarCrossSec(int nGen, int decayer)
     }
 
     TH1F* hFrac = static_cast<TH1F *>(hDplusFromDstar->Clone("hFrac"));
-    hFrac->Divide(hDplus);
+    hFrac->Divide(hDplusReb);
     TGraphAsymmErrors* gFrac = static_cast<TGraphAsymmErrors *>(gDplusFromDstar->Clone("gFrac"));
     for(int iPt = 1; iPt < hFrac->GetNbinsX()+1; iPt++)
     {
         gFrac->SetPoint(iPt, hFrac->GetBinCenter(iPt), hFrac->GetBinContent(iPt));
-        double relSysUncDplusLow = gDplus->GetErrorYlow(iPt) / hDplus->GetBinContent(iPt);
-        double relSysUncDplusHigh = gDplus->GetErrorYhigh(iPt) / hDplus->GetBinContent(iPt);
+        double relSysUncDplusLow = gDplusReb->GetErrorYlow(iPt) / hDplusReb->GetBinContent(iPt);
+        double relSysUncDplusHigh = gDplusReb->GetErrorYhigh(iPt) / hDplusReb->GetBinContent(iPt);
         double relSysUncDplusFromDstarLow = gDplusFromDstar->GetErrorYlow(iPt) / hDplusFromDstar->GetBinContent(iPt);
         double relSysUncDplusFromDstarHigh = gDplusFromDstar->GetErrorYhigh(iPt) / hDplusFromDstar->GetBinContent(iPt);
         double sysUncLow = TMath::Sqrt(relSysUncDplusHigh*relSysUncDplusHigh + relSysUncDplusFromDstarLow*relSysUncDplusFromDstarLow) * hFrac->GetBinContent(iPt);
@@ -353,7 +410,7 @@ void ComputeDplusFromDstarCrossSec(int nGen, int decayer)
     leg->SetBorderSize(0);    
     leg->AddEntry(hDstar, "D*^{+}", "p");    
     leg->AddEntry(fPowLawDstar, "power law fit to D*^{+}", "l");    
-    leg->AddEntry(hDplus, "D^{+}", "p");    
+    leg->AddEntry(hDplusReb, "D^{+}", "p");    
     leg->AddEntry(hDplusFromDstar, "D^{+} #leftarrow D*^{+}", "p");    
 
     TCanvas *cPtCorr = new TCanvas("cPtCorr", "", 500, 500);
@@ -367,8 +424,8 @@ void ComputeDplusFromDstarCrossSec(int nGen, int decayer)
     gDstar->Draw("2");
     hDstar->DrawCopy("same");
     fPowLawDstar->DrawCopy("same");
-    gDplus->Draw("2");
-    hDplus->DrawCopy("same");
+    gDplusReb->Draw("2");
+    hDplusReb->DrawCopy("same");
     gDplusFromDstar->Draw("2");
     hDplusFromDstar->DrawCopy("same");
     leg->Draw();
@@ -386,8 +443,8 @@ void ComputeDplusFromDstarCrossSec(int nGen, int decayer)
     gDstar->Write();
     hDstar->Write();
     fPowLawDstar->Write();
-    gDplus->Write();
-    hDplus->Write();
+    gDplusReb->Write();
+    hDplusReb->Write();
     gDplusFromDstar->Write();
     hDplusFromDstar->Write();
     gFrac->Write();
