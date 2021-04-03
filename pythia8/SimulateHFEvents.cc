@@ -259,9 +259,6 @@ void SimulateHFEvents(TString cfgFileName)
         //         ++nChargedEta05;
         // }
 
-        int nb = 0;
-        int nbbar = 0;
-
         for (int iPart = 0; iPart < nPart; iPart++)
         {
             TParticle* part = dynamic_cast<TParticle*>(particles->At(iPart));
