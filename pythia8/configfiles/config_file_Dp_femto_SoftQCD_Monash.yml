@@ -1,0 +1,6 @@
+generator:
+    type: Pythia8
+    process: SoftQCD
+    tune: Monash
+
+energy: 13000

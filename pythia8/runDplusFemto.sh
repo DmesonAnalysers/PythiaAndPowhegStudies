@@ -1,0 +1,1 @@
+parallel -j20 python3 SimulateDplusProtonFemtoEvents.py --nevents 10000000 --seed {} --outfile AnalysisResult_{}.root ::: {1..20}

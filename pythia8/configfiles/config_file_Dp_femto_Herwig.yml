@@ -1,0 +1,6 @@
+generator:
+    type: Herwig6
+    process: null
+    tune: 8000 # MB
+
+energy: 13000
