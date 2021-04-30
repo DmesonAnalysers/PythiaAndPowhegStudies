@@ -6,7 +6,8 @@ import sys
 import argparse
 import numpy as np
 import yaml
-from ROOT import AliPythia8, THerwig6, TClonesArray, TLorentzVector, TDatabasePDG, TH1F, TFile, TDirectoryFile, TList, TObject, TNtuple # pylint: disable=import-error,no-name-in-module
+from ROOT import AliPythia8, THerwig6, TClonesArray, TLorentzVector, TDatabasePDG, gSystem # pylint: disable=import-error,no-name-in-module
+from ROOT import TH1F, TFile, TDirectoryFile, TList, TObject, TNtuple # pylint: disable=import-error,no-name-in-module
 
 
 def ComputeKstar(part1, part2):
@@ -117,6 +118,13 @@ energy = cfg['energy']
 
 if genType == 'Pythia8':
 
+    gSystem.Load("liblhapdf.so")
+    gSystem.Load("libpythia8.so")
+    gSystem.Load("libAliPythia8.so")
+    gSystem.Setenv("PYTHIA8DATA", gSystem.ExpandPathName("$ALICE_ROOT/PYTHIA8/pythia8/xmldoc"))
+    gSystem.Setenv("LHAPDF", gSystem.ExpandPathName("$ALICE_ROOT/LHAPDF"))
+    gSystem.Setenv("LHAPATH", gSystem.ExpandPathName("$ALICE_ROOT/LHAPDF/PDFsets"))
+
     generator = AliPythia8()
 
     # process (SOftQCD or HardQCD)
@@ -224,7 +232,7 @@ fHistNEvents.GetXaxis().SetBinLabel(2, "Selected SE events")
 fHistNEvents.GetXaxis().SetBinLabel(3, "ME events")
 fHistNEvents.SetMinimum(0)
 
-fMult = TH1F("fMult", ";multiplicity;counts", 1000, 0., 1000.)
+fMult = TH1F("fMult", "multiplicitycounts", 1000, 0., 1000.)
 
 fHistDplusProtonPairsDPrompt = TH1F("fHistDplusProtonPairsDPrompt", ";#it{k}* (GeV/#it{c})", 1000, 0., 1.)
 fHistDplusProtonPairsDFromB = TH1F("fHistDplusProtonPairsDFromB", ";#it{k}* (GeV/#it{c})", 1000, 0., 1.)

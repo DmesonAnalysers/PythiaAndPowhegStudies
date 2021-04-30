@@ -1,1 +1,1 @@
-parallel -j20 python3 SimulateDplusProtonFemtoEvents.py --nevents 10000000 --seed {} --outfile AnalysisResult_{}.root ::: {1..20}
+parallel -j20 python3 SimulateDplusProtonFemtoEvents.py configfiles/config_file_Dp_femto_SoftQCD_Monash.yml --nevents 10000000 --seed {} --outfile outputs/femto/AnalysisResult_Pythia8_Monash_{}.root ::: {1..20}
