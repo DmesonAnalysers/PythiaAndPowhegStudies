@@ -9,7 +9,7 @@
 
 #include "yaml-cpp/yaml.h"
 
-#include <TPythia8.h>
+#include <AliPythia8.h>
 #include <TFile.h>
 #include <TROOT.h>
 #include <TH1.h>
@@ -19,6 +19,7 @@
 #include <TDatabasePDG.h>
 #include <TParticle.h>
 #include <TRandom3.h>
+#include <TSystem.h>
 #include <TF1.h>
 #include <TLorentzVector.h>
 
@@ -30,15 +31,13 @@ enum FONLLPred {
     kMax
 };
 
-const int kPdgHe = 1000020030;
-
 //__________________________________________________________________________________________________
-void ComputeLbtoHeDecays(TString cfgFileName);
+void ComputeLbtoHeDecays(TString cfgFileName, int nEvents=1000000, std::string outFileName="AnalysisResults.root", int seed=42);
 bool SimpleCoalescence(double p1[3], double p2[3], double p3[3], double pHe3[3], double pc = 0.2 /* MeV/c */);
 TH1F* ReadFONLLVsPt(string txtFileName, int whichPred, double ptMin, double binWidth, int nBins);
 
 //__________________________________________________________________________________________________
-void ComputeLbtoHeDecays(TString cfgFileName)
+void ComputeLbtoHeDecays(TString cfgFileName, int nEvents, std::string outFileName, int seed)
 {
     //__________________________________________________________
     //Load configs from yaml file
@@ -54,148 +53,91 @@ void ComputeLbtoHeDecays(TString cfgFileName)
         std::cout << Form("\033[32mLoading configuration from file %s\033[0m\n", cfgFileName.Data()) << std::endl;
     }
 
-    int nEvents = config["nevents"].as<int>();
-    int tune = config["tunes"]["tune"].as<int>();
-    int paperSkandsMode = config["tunes"]["paperSkandsMode"].as<int>();;
-
-    int CRmode = config["tunes"]["advanced"]["CRmode"].as<int>();
-    int qq1toQQ0charm = config["tunes"]["advanced"]["qq1toQQ0charm"].as<int>();
-    int qq1toQQ0beauty = config["tunes"]["advanced"]["qq1toQQ0beauty"].as<int>();
-    int timeDilationMode = config["tunes"]["advanced"]["timeDilationMode"].as<int>();
-    int doubleJunct = config["tunes"]["advanced"]["doubleJunct"].as<int>();
-    int m0 = config["tunes"]["advanced"]["m0"].as<int>();
-
+    std::string process = config["generator"]["process"].as<std::string>();
+    std::string tune = config["generator"]["process"].as<std::string>();
     std::string FONLLFileName = config["FONLL"]["filename"].as<std::string>();
 
-    std::string outFileName = config["output"]["filename"].as<std::string>();
+    gSystem->Load("liblhapdf.so");
+    gSystem->Load("libpythia8.so");
+    gSystem->Load("libAliPythia8.so");
+    gSystem->Setenv("PYTHIA8DATA", gSystem->ExpandPathName("$ALICE_ROOT/PYTHIA8/pythia8/xmldoc"));
+    gSystem->Setenv("LHAPDF", gSystem->ExpandPathName("$ALICE_ROOT/LHAPDF"));
+    gSystem->Setenv("LHAPATH", gSystem->ExpandPathName("$ALICE_ROOT/LHAPDF/PDFsets"));
 
     //__________________________________________________________
     // create and configure pythia generator
-    TPythia8 pythia;
-    pythia.ReadString("SoftQCD:all = on ");
+    AliPythia8 pythia;
+    if(process == "SoftQCD")
+        pythia.ReadString("SoftQCD:all = on");
+    else if(process == "HardQCD")
+    {
+        pythia.ReadString("HardQCD:hardccbar = on");
+        pythia.ReadString("HardQCD:hardbbbar = on");
+    }
 
     // set tune
-    pythia.ReadString(Form("Tune:pp = %d", tune));
-    if (paperSkandsMode == -1) // custom --> only if you are an expert user
-        {
-            if(CRmode>-1){
-                pythia.ReadString(Form("ColourReconnection:mode = %d", CRmode));     
-        }
-            if(!doubleJunct){
-                pythia.ReadString("ColourReconnection:allowDoubleJunRem = off");
-        }
-        else {
-            pythia.ReadString("ColourReconnection:allowDoubleJunRem = on");
-        }
-        if(qq1toQQ0charm>0 || qq1toQQ0beauty>0){
-            pythia.ReadString(Form("StringFlav:probQQ1toQQ0join = 0.027,0.027,%f,%f",(Float_t)(qq1toQQ0charm/1000.),(Float_t)(qq1toQQ0beauty/1000.)));
-        }
-        if(timeDilationMode>-1){
-            pythia.ReadString(Form("ColourReconnection:timeDilationMode=%d",timeDilationMode));
-        }
-        if(m0>-1){
-            pythia.ReadString(Form("ColourReconnection:m0=%f",(Float_t)(m0/100.)));
-        }
-    }
-    else
+    if(tune == "Monash")
     {
-        if (paperSkandsMode == 0)
-        {
-            pythia.ReadString("ColourReconnection:mode = 1");
-            pythia.ReadString("ColourReconnection:allowDoubleJunRem = off");
-            pythia.ReadString("ColourReconnection:m0 = 2.9");
-            pythia.ReadString("ColourReconnection:allowJunctions = on");
-            pythia.ReadString("ColourReconnection:junctionCorrection = 1.43");
-            pythia.ReadString("ColourReconnection:timeDilationMode = 0");
-            pythia.ReadString("StringPT:sigma = 0.335");
-            pythia.ReadString("StringZ:aLund = 0.36");
-            pythia.ReadString("StringZ:bLund = 0.56");
-            pythia.ReadString("StringFlav:probQQtoQ = 0.078");
-            pythia.ReadString("StringFlav:ProbStoUD = 0.2");
-            pythia.ReadString("StringFlav:probQQ1toQQ0join = 0.0275,0.0275,0.0275,0.0275");
-            pythia.ReadString("MultiPartonInteractions:pT0Ref = 2.12");
-            pythia.ReadString("BeamRemnants:remnantMode = 1");
-            pythia.ReadString("BeamRemnants:saturation =5");
-            if (timeDilationMode > -1)
-            { // These settings should never be used overwrting the above ones
-                pythia.ReadString(Form("ColourReconnection:timeDilationMode=%d", timeDilationMode));
-            }
-            if (CRmode > -1)
-            { // These settings should never be used overwrting the above ones
-                pythia.ReadString(Form("ColourReconnection:mode = %d", CRmode));
-            }
-            if (m0 > -1)
-            {
-                pythia.ReadString(Form("ColourReconnection:m0=%f", (float)(m0 / 100.)));
-            }
-        }
-        else if (paperSkandsMode == 2)
-        {
-            pythia.ReadString("ColourReconnection:mode = 1");
-            pythia.ReadString("ColourReconnection:allowDoubleJunRem = off");
-            pythia.ReadString("ColourReconnection:m0 = 0.3");
-            pythia.ReadString("ColourReconnection:allowJunctions = on");
-            pythia.ReadString("ColourReconnection:junctionCorrection = 1.20");
-            pythia.ReadString("ColourReconnection:timeDilationMode = 2");
-            pythia.ReadString("ColourReconnection:timeDilationPar = 0.18");
-            pythia.ReadString("StringPT:sigma = 0.335");
-            pythia.ReadString("StringZ:aLund = 0.36");
-            pythia.ReadString("StringZ:bLund = 0.56");
-            pythia.ReadString("StringFlav:probQQtoQ = 0.078");
-            pythia.ReadString("StringFlav:ProbStoUD = 0.2");
-            pythia.ReadString("StringFlav:probQQ1toQQ0join = 0.0275,0.0275,0.0275,0.0275");
-            pythia.ReadString("MultiPartonInteractions:pT0Ref = 2.15");
-            pythia.ReadString("BeamRemnants:remnantMode = 1");
-            pythia.ReadString("BeamRemnants:saturation =5");
-            if (timeDilationMode > -1)
-            { // These settings should never be used overwrting the above ones
-                pythia.ReadString(Form("ColourReconnection:timeDilationMode=%d", timeDilationMode));
-            }
-            if (CRmode > -1)
-            { // These settings should never be used overwrting the above ones
-                pythia.ReadString(Form("ColourReconnection:mode = %d", CRmode));
-            }
-            if (m0 > -1)
-            {
-                pythia.ReadString(Form("ColourReconnection:m0=%f", (float)(m0 / 100.)));
-            }
-        }
-        else if (paperSkandsMode == 3)
-        {
-            pythia.ReadString("ColourReconnection:mode = 1");
-            pythia.ReadString("ColourReconnection:allowDoubleJunRem = off");
-            pythia.ReadString("ColourReconnection:m0 = 0.3");
-            pythia.ReadString("ColourReconnection:allowJunctions = on");
-            pythia.ReadString("ColourReconnection:junctionCorrection = 1.15");
-            pythia.ReadString("ColourReconnection:timeDilationMode = 3");
-            pythia.ReadString("ColourReconnection:timeDilationPar = 0.073");
-            pythia.ReadString("StringPT:sigma = 0.335");
-            pythia.ReadString("StringZ:aLund = 0.36");
-            pythia.ReadString("StringZ:bLund = 0.56");
-            pythia.ReadString("StringFlav:probQQtoQ = 0.078");
-            pythia.ReadString("StringFlav:ProbStoUD = 0.2");
-            pythia.ReadString("StringFlav:probQQ1toQQ0join = 0.0275,0.0275,0.0275,0.0275");
-            pythia.ReadString("MultiPartonInteractions:pT0Ref = 2.05");
-            pythia.ReadString("BeamRemnants:remnantMode = 1");
-            pythia.ReadString("BeamRemnants:saturation =5");
-            if (timeDilationMode > -1)
-            { // These settings should never be used overwrting the above ones
-                pythia.ReadString(Form("ColourReconnection:timeDilationMode=%d", timeDilationMode));
-            }
-            if (CRmode > -1)
-            { // These settings should never be used overwrting the above ones
-                pythia.ReadString(Form("ColourReconnection:mode = %d", CRmode));
-            }
-            if (m0 > -1)
-            {
-                pythia.ReadString(Form("ColourReconnection:m0=%f", (float)(m0 / 100.)));
-            }
-        }
-        else
-        {
-            std::cerr << "\033[31mERROR: invalid mode/tune! Exit\033[0m" << std::endl;
-            return;
-        }
+        pythia.ReadString(Form("Tune:pp = 14"));
+    }
+    else if(tune == "CRMode0")
+    {
+        pythia.ReadString(Form("Tune:pp = 14"));
+        pythia.ReadString("ColourReconnection:mode = 1");
+        pythia.ReadString("ColourReconnection:allowDoubleJunRem = off");
+        pythia.ReadString("ColourReconnection:m0 = 2.9");
+        pythia.ReadString("ColourReconnection:allowJunctions = on");
+        pythia.ReadString("ColourReconnection:junctionCorrection = 1.43");
+        pythia.ReadString("ColourReconnection:timeDilationMode = 0");
+        pythia.ReadString("StringPT:sigma = 0.335");
+        pythia.ReadString("StringZ:aLund = 0.36");
+        pythia.ReadString("StringZ:bLund = 0.56");
+        pythia.ReadString("StringFlav:probQQtoQ = 0.078");
+        pythia.ReadString("StringFlav:ProbStoUD = 0.2");
+        pythia.ReadString("StringFlav:probQQ1toQQ0join = 0.0275,0.0275,0.0275,0.0275");
+        pythia.ReadString("MultiPartonInteractions:pT0Ref = 2.12");
+        pythia.ReadString("BeamRemnants:remnantMode = 1");
+        pythia.ReadString("BeamRemnants:saturation =5");
+    }
+    else if(tune == "CRMode2")
+    {
+        pythia.ReadString(Form("Tune:pp = 14"));
+        pythia.ReadString("ColourReconnection:mode = 1");
+        pythia.ReadString("ColourReconnection:allowDoubleJunRem = off");
+        pythia.ReadString("ColourReconnection:m0 = 0.3");
+        pythia.ReadString("ColourReconnection:allowJunctions = on");
+        pythia.ReadString("ColourReconnection:junctionCorrection = 1.20");
+        pythia.ReadString("ColourReconnection:timeDilationMode = 2");
+        pythia.ReadString("ColourReconnection:timeDilationPar = 0.18");
+        pythia.ReadString("StringPT:sigma = 0.335");
+        pythia.ReadString("StringZ:aLund = 0.36");
+        pythia.ReadString("StringZ:bLund = 0.56");
+        pythia.ReadString("StringFlav:probQQtoQ = 0.078");
+        pythia.ReadString("StringFlav:ProbStoUD = 0.2");
+        pythia.ReadString("StringFlav:probQQ1toQQ0join = 0.0275,0.0275,0.0275,0.0275");
+        pythia.ReadString("MultiPartonInteractions:pT0Ref = 2.15");
+        pythia.ReadString("BeamRemnants:remnantMode = 1");
+        pythia.ReadString("BeamRemnants:saturation =5");
+    }
+    else if(tune == "CRMode3")
+    {
+        pythia.ReadString(Form("Tune:pp = 14"));
+        pythia.ReadString("ColourReconnection:mode = 1");
+        pythia.ReadString("ColourReconnection:allowDoubleJunRem = off");
+        pythia.ReadString("ColourReconnection:m0 = 0.3");
+        pythia.ReadString("ColourReconnection:allowJunctions = on");
+        pythia.ReadString("ColourReconnection:junctionCorrection = 1.15");
+        pythia.ReadString("ColourReconnection:timeDilationMode = 3");
+        pythia.ReadString("ColourReconnection:timeDilationPar = 0.073");
+        pythia.ReadString("StringPT:sigma = 0.335");
+        pythia.ReadString("StringZ:aLund = 0.36");
+        pythia.ReadString("StringZ:bLund = 0.56");
+        pythia.ReadString("StringFlav:probQQtoQ = 0.078");
+        pythia.ReadString("StringFlav:ProbStoUD = 0.2");
+        pythia.ReadString("StringFlav:probQQ1toQQ0join = 0.0275,0.0275,0.0275,0.0275");
+        pythia.ReadString("MultiPartonInteractions:pT0Ref = 2.05");
+        pythia.ReadString("BeamRemnants:remnantMode = 1");
+        pythia.ReadString("BeamRemnants:saturation =5");
     }
 
     // keep only interesting decays, to be reweighted a posteriori
@@ -207,6 +149,8 @@ void ComputeLbtoHeDecays(TString cfgFileName)
     // pythia.ReadString("5122:onIfMatch = 2 3 4 2101"); // bRatio="0.0800000"
 
     // init
+    pythia.ReadString("Random:setSeed = on");
+    pythia.ReadString(Form("Random:seed %d", seed));
     pythia.Pythia8()->init();
 
     //__________________________________________________________
@@ -220,9 +164,9 @@ void ComputeLbtoHeDecays(TString cfgFileName)
     hBR->GetXaxis()->SetBinLabel(2, "#Lambda_{b}^{0} #rightarrow (>=2)p + (>=1)n / #Lambda_{b}^{0} #rightarrow d#bar{u}d (ud)_{0}");
     hBR->SetBinContent(1, 0.0120000);
 
-    TH1F* hFONLLLb = ReadFONLLVsPt(FONLLFileName, kCentral, 0.025, 0.05, 1001);
+    TH1F* hFONLLLb = ReadFONLLVsPt(FONLLFileName, kCentral, 0.025, 0.05, 2001);
     hFONLLLb->Scale(0.816); // f(b->B) from e+e- provides good normalisation for LHCb and CMS B-meson measurements
-    hFONLLLb->SetName("hFONLLLb");
+    hFONLLLb->SetNameTitle("hFONLLLb", ";#it{p}_{T} (GeV/#it{c});d#sigma/d#it{p}_{T} (pb GeV^{-1} #it{c})");
 
     // f(b -> Lb) / f(b -> B) from LHCb measurement https://arxiv.org/pdf/1902.06794.pdf
     TF1* fFFLHCb = new TF1("fracLb","([4] * ([5] + exp([6] + [7] * x))) /  (([0] * ([1] + [2] * (x - [3])))  + ([4] * ([5] + exp([6] + [7] * x))) + 1)  ", 0, 50);
@@ -260,7 +204,9 @@ void ComputeLbtoHeDecays(TString cfgFileName)
     treeLb->Branch("pdgDau", &pdgDau);
 
     TClonesArray* particles = new TClonesArray("TParticle", 1000);
-    double massLb = TDatabasePDG::Instance()->GetParticle(5122)->Mass();
+    int pdgHb = 5122;
+    double massLb = TDatabasePDG::Instance()->GetParticle(pdgHb)->Mass();
+    double massHe3 = 2.80839160743;
     int nEventSel = 0;
     for (int iEvent = 0; iEvent < nEvents; ++iEvent)
     {
@@ -275,7 +221,7 @@ void ComputeLbtoHeDecays(TString cfgFileName)
         double ELb = TMath::Sqrt(massLb * massLb + pLb * pLb);
 
         pythia.Pythia8()->event.clear();
-        pythia.Pythia8()->event.append(5122, 11, 0, 0, pxLb, pyLb, pzLb, ELb, massLb);
+        pythia.Pythia8()->event.append(pdgHb, 11, 0, 0, pxLb, pyLb, pzLb, ELb, massLb);
         int idPart = pythia.Pythia8()->event[0].id();
         pythia.Pythia8()->particleData.mayDecay(idPart, true);
         pythia.Pythia8()->moreDecays();
@@ -296,23 +242,12 @@ void ComputeLbtoHeDecays(TString cfgFileName)
             pyDau.push_back(part->Py());
             pzDau.push_back(part->Pz());
             pdgDau.push_back(part->GetPdgCode());
-            switch(pdgDau[iPart-1])
-            {
-                case 2212:
-                    nProtons++;
-                break;
-                case -2212:
-                    nAntiProtons++;
-                break;
-                case 2112:
-                    nNeutrons++;
-                break;
-                case -2112:
-                    nAntiNeutrons++;
-                break;
-            }
+            if(pdgDau[iPart-1] == 2212)
+                nProtons++;
+            else if(pdgDau[iPart-1] == 2112)
+                nNeutrons++;
         }
-        if((nProtons >= 2 and nNeutrons >= 1) || (nAntiProtons >= 2 and nAntiNeutrons >= 1))
+        if(nProtons >= 2 and nNeutrons >= 1)
         {
             double pCoal1[3], pCoal2[3], pCoal3[3];
             double pCoalHe3[3] = {-999., -999., -999.};
@@ -341,7 +276,11 @@ void ComputeLbtoHeDecays(TString cfgFileName)
             bool hasCoalesced = SimpleCoalescence(pCoal1, pCoal2, pCoal3, pCoalHe3);
             if(hasCoalesced) {
                 double ptHe3 = TMath::Sqrt(pCoalHe3[0]*pCoalHe3[0] + pCoalHe3[1]*pCoalHe3[1]);
-                hHe3FromLb->Fill(ptHe3);
+                double pHe3 = TMath::Sqrt(ptHe3*ptHe3 + pCoalHe3[2]*pCoalHe3[2]);
+                double EHe3 = TMath::Sqrt(massHe3 * massHe3 + pLb * pLb);
+                double yHe3 = TMath::Log((EHe3 + pCoalHe3[2]) / (EHe3 - pCoalHe3[2]));
+                if(TMath::Abs(yHe3) < 0.5)
+                    hHe3FromLb->Fill(ptHe3);
             }
             nEventSel++;
             treeLb->Fill();
@@ -382,7 +321,7 @@ TH1F* ReadFONLLVsPt(string txtFileName, int whichPred, double ptMin, double binW
 
     std::vector<std::string> values;
     
-    TH1F* hBvsPt = new TH1F("hBvsPt", "", nBins, ptMin, ptMin + nBins*binWidth);
+    TH1F* hFONLL = new TH1F("hFONLL", "", nBins, ptMin, ptMin + nBins*binWidth);
     double centY = -1., minY = -1., maxY = -1.;
     int iPt = 1;
     while(!inSet.eof())
@@ -394,7 +333,7 @@ TH1F* ReadFONLLVsPt(string txtFileName, int whichPred, double ptMin, double binW
             continue;
 
         size_t pos = 0;
-        while((pos = line.find(' ')) != std::string::npos)
+        while((pos = line.find(" ")) != std::string::npos)
         {
             values.push_back(line.substr(0, pos));
             if(values.size()==2) {
@@ -415,17 +354,17 @@ TH1F* ReadFONLLVsPt(string txtFileName, int whichPred, double ptMin, double binW
             line = line.substr(pos + 1);
         }
         if(whichPred == kCentral)
-            hBvsPt->SetBinContent(iPt, centY);
+            hFONLL->SetBinContent(iPt, centY);
         else if(whichPred == kMin)
-            hBvsPt->SetBinContent(iPt, minY);
+            hFONLL->SetBinContent(iPt, minY);
         else if(whichPred == kMax)
-            hBvsPt->SetBinContent(iPt, maxY);
+            hFONLL->SetBinContent(iPt, maxY);
         iPt++;
     }
 
     inSet.close();
 
-    return hBvsPt;
+    return hFONLL;
 }
 
 //__________________________________________________________________________________________________
