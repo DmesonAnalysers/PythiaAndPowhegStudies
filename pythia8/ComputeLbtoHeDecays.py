@@ -302,7 +302,7 @@ for iEvent in range(args.nevents):
 
 hBR.SetBinContent(2, nEventSel / args.nevents)
 if hHe3FromLb.Integral() > 0:
-    hHe3FromLb.Scale(hFONLLLb.Integral() / hHe3FromLb.Integral() * hBR.GetBinContent(1) * hBR.GetBinContent(2))
+    hHe3FromLb.Scale(hFONLLLb.Integral() / nEventSel * hBR.GetBinContent(1) * hBR.GetBinContent(2))
 
 # Save histogram on file and close file.
 outFile.cd()

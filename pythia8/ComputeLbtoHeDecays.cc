@@ -294,7 +294,7 @@ void ComputeLbtoHeDecays(TString cfgFileName, int nEvents, std::string outFileNa
     }
 
     hBR->SetBinContent(2, static_cast<double>(nEventSel) / nEvents);
-    hHe3FromLb->Scale(hFONLLLb->Integral() / hHe3FromLb->Integral() * hBR->GetBinContent(1) * hBR->GetBinContent(2));
+    hHe3FromLb->Scale(hFONLLLb->Integral() / nEventSel * hBR->GetBinContent(1) * hBR->GetBinContent(2));
 
     // Save histogram on file and close file.
     outFile.cd();
