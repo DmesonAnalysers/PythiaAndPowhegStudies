@@ -166,7 +166,7 @@ void ComputeLbtoHeDecays(TString cfgFileName, int nEvents, std::string outFileNa
 
     TH1F* hFONLLLb = ReadFONLLVsPt(FONLLFileName, kCentral, 0.025, 0.05, 2001);
     hFONLLLb->Scale(0.816); // f(b->B) from e+e- provides good normalisation for LHCb and CMS B-meson measurements
-    hFONLLLb->SetNameTitle("hFONLLLb", ";#it{p}_{T} (GeV/#it{c});d#sigma/d#it{p}_{T} (pb GeV^{-1} #it{c})");
+    hFONLLLb->SetNameTitle("hFONLLLb_y1", ";#it{p}_{T} (GeV/#it{c});d#sigma/d#it{p}_{T} (pb GeV^{-1} #it{c})");
 
     // f(b -> Lb) / f(b -> B) from LHCb measurement https://arxiv.org/pdf/1902.06794.pdf
     TF1* fFFLHCb = new TF1("fracLb","([4] * ([5] + exp([6] + [7] * x))) /  (([0] * ([1] + [2] * (x - [3])))  + ([4] * ([5] + exp([6] + [7] * x))) + 1)  ", 0, 50);
@@ -186,7 +186,7 @@ void ComputeLbtoHeDecays(TString cfgFileName, int nEvents, std::string outFileNa
         hFONLLLb->SetBinContent(iPt, hFONLLLb->GetBinContent(iPt) * fFFLHCb->Eval(ptCent>5 ? ptCent:5));
     }
 
-    TH1F* hHe3FromLb = (TH1F*)hFONLLLb->Clone("hHe3FromLb");
+    TH1F* hHe3FromLb = (TH1F*)hFONLLLb->Clone("hHe3FromLb_y05");
     hHe3FromLb->Reset();
 
     TTree *treeLb = new TTree("treeLb", "treeLb");
