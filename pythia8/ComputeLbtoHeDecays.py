@@ -188,7 +188,7 @@ hBR.SetBinContent(1, 0.0120000)
 
 hFONLLLb = ReadFONLL(fileFONLL)
 hFONLLLb.Scale(0.816) # f(b -> B) from e+e- provides good normalisation for LHCb and CMS B-meson measurements
-hFONLLLb.SetName('hFONLLLb')
+hFONLLLb.SetName('hFONLLLb_y1')
 
 # f(b -> Lb) / f(b -> B) from LHCb measurement https://arxiv.org/pdf/1902.06794.pdf
 fFFLHCb = TF1('fracLb','([4] * ([5] + exp([6] + [7] * x))) /  (([0] * ([1] + [2] * (x - [3])))  + ([4] * ([5] + exp([6] + [7] * x))) + 1)  ', 0, 50)
@@ -206,7 +206,7 @@ for iPt in range(1, hFONLLLb.GetNbinsX()+1):
     ptCent = hFONLLLb.GetBinCenter(iPt)
     hFONLLLb.SetBinContent(iPt, hFONLLLb.GetBinContent(iPt) * fFFLHCb.Eval((ptCent if ptCent > 5 else 5)))
 
-hHe3FromLb = hFONLLLb.Clone('hHe3FromLb')
+hHe3FromLb = hFONLLLb.Clone('hHe3FromLb_y05')
 hHe3FromLb.Reset()
 
 treeLb = TTree('treeLb', 'treeLb')
